@@ -1,0 +1,10 @@
+#1
+Your are in a donjon and two doors or in front of you.
+The firast is blue with a saphyr in the center.
+The second is yellow with a qurtz in the center.
+Which one will you pick ?
+@ 1 -> 2, 2 -> 3
+#2
+You picked the blue door, you are rich! A treasure was waiting for you on the other side!
+#3
+You picked the Yellow one, you are in a library. All the knowledge of the world seems to be kept here !
