@@ -1,76 +1,79 @@
-import System.IO
-import Data.Char
 import Data.List
 
-main :: IO ()
+data Input = Input String deriving (Show, Read)
+data Action = Action String deriving (Show, Read)
+data Choices = Choices [(Input, Action)] deriving (Show, Read)
+data Context = Context String deriving (Show)
+data Situation = Situation Int (Context, Choices) deriving (Show)
+data Game = Game [Situation] deriving (Show)
+
 main = do
-    contents <- readFile "doors.txt"
-    let interpreted = shape contents
-    mapM_ command interpreted
-    --command interpreted
+    putStrLn "Welcome to Interactive Fiction Reader\nPlease type your Game file name : "
+    gameName <- getLine 
+    content <- readFile gameName
+    let emptyGame = Game []
+        game = createGame content emptyGame 
+    readGame game 0
+    putStrLn "Thanks !"
+    
 
-shape :: String -> [(String, String)]
-shape = map (interpreter) . lines
+createGame :: String -> Game -> Game 
+createGame (x:xs) g@(Game si)
+    | xs == [] || head xs == '$' = g'
+    | x == '#' = createSituation xs g
+    | otherwise = error "The game file does not start with first Situation declaration or the character #."
+        where g' = Game (reverse si)
 
-interpreter :: String -> (String, String)
-interpreter s@(h:t)
-    | h == '#' = ("instuction", t)
-    | h == '@' = ("choices", t)
-    | otherwise = ("text", s)
+createSituation :: String -> Game -> Game
+createSituation xs g@(Game si) = createGame rest $ Game sis
+    where   sis         = (Situation (read (fst nameRest) :: Int) (Context (trim $ fst contextRest), choices)):si
+            nameRest    = span (/= '\n') xs
+            contextRest = span (\x -> x /= '@') $ snd nameRest
+            choicesRest = span (\x -> x /= '#') $ snd contextRest
+            choices     = createChoices $ fst choicesRest
+            rest        = if snd choicesRest /= "" then snd choicesRest else " "
 
-command :: (String, String) -> IO ()
-command t@(c, b)
-    | c == "instruction" = putStr $ b ++ ": "
-    | c == "text" = putStrLn b
-    | c == "choices" = do 
+createChoices :: String -> Choices
+createChoices (x:xs) = createChoices' (x:xs) []
+    where createChoices' (x:xs) cs
+            | x == '\n' = read (cs ++ "\")]") :: Choices
+            | x == '@'  = createChoices' xs (cs ++ "Choices [( Input \"")
+            | x == '>'  = createChoices' xs (cs ++ "\", Action \"")
+            | x == ','  = createChoices' xs (cs ++ "\"), (Input \"")
+            | x == ' '  = createChoices' xs cs
+            | otherwise = createChoices' xs (cs ++ x:[])
+
+trim :: String -> String
+trim ls
+    | before == ' ' || before == '\n' = trim $ tail ls
+    | after  == ' ' || after  == '\n' = trim $ init ls
+    | otherwise  = ls
+    where before = head ls
+          after  = last ls
+
+readGame :: Game -> Int -> IO ()
+readGame g@(Game xs) s = readSituation g $ xs !! s
+
+readSituation :: Game -> Situation -> IO ()
+readSituation g s@(Situation _ (co , ch)) = do
+    putStrLn "\n\n"
+    putStrLn $ cont co
+    let theEnd = isItTheEnd ch
+    if theEnd then putStrLn "Game Over" else do
         answer <- getLine
-        readAns $ evaluate answer b    
-    | otherwise = putStrLn "Not what you expected ! error please review your program"
+        let result = evalChoice answer ch 
+        if result == False 
+            then putStrLn "It is not one of the possible answers"
+            else readGame g $ (read $ doAction answer ch) - 1
+    where cont co@(Context s) = s 
 
-evaluate :: String -> String -> String
-evaluate a b = foldl (\acc x -> if a == head x then tail x else acc) "1" ans
-    where ans = answers b
+evalChoice :: String -> Choices -> Bool
+evalChoice a c@(Choices xs) = any (== True) $ map (\x@(Input y, Action z) -> a == y) xs
 
-answers :: String -> [[String]]
-answers = map (splitOn "->") . splitOn ", "
+doAction :: String -> Choices -> String
+doAction a c@(Choices xs) =  foldl (\acc x@(Input y, Action z) -> if a==y then z else acc) "" xs
 
-readAns :: String -> IO ()
-readAns s = putStrLn s
-
--- use marker ", " to build a list of choices -> use marker "->" to make a tupple choice target  
-    -- [
-    --     ("instuction","1"),
-    --     ("text","Your are in a donjon and two doors or in front of you."),
-    --     ("text","The firast is blue with a saphyr in the center."),
-    --     ("text","The second is yellow with a qurtz in the center."),
-    --     ("text","Which one will you pick ?"),
-    --     ("choices"," 1 -> 2, 2 -> 3"),
-    --     ("instuction","2"),
-    --     ("text","You picked the blue door, you are rich! A treasure was waiting for you on the other side!"),
-    --     ("instuction","3"),
-    --     ("text","You picked the Yellow one, you are in a library. All the knowledge of the world seems to be kept here !")
-    -- ]
-
--- Test IO functionality of main and read/write from/to files
--- test :: IO()
--- test = do
---     putStrLn "Hello and welcome to IF reader"
---     putStr "What is your name ? "
---     name <- getLine
---     putStrLn $ "Nice to meet you " ++ name ++ " !"
-
---     loud <- readFile "Iamthenight.txt"
---     putStr $ shape loud
-
---     putStrLn "\nHu-hum... I mean :\n"
-
---     handle <- openFile "H:/Code/Haskell/IFReaderProject/Iamthenight.txt" ReadMode
---     contents <- hGetContents handle
---     putStrLn contents
---     hClose handle
-        
---     putStr "What would you like to play ? "
---     game <- getLine
---     putStrLn $ "I do not have \"" ++ game ++ "\" ready yet. But I might consider building it..."
---     putStrLn "I am afraid that this is all that I have programed so far, so I have to let the program end."
---     putStrLn "See you in the next version."
+isItTheEnd :: Choices -> Bool
+isItTheEnd ch@(Choices xs)
+        | any (\x@(Input y, Action z) -> y == "Enter" && z == "End") xs = True
+        | otherwise = False

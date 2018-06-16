@@ -1,0 +1,12 @@
+#1
+You are in a room. You go left (1) or right (2)
+@1>2, 2>3
+
+#2
+You went left
+@Enter>End 
+
+#3
+You went right
+@Enter>End
+$
