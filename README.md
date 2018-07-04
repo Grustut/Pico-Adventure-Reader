@@ -17,7 +17,7 @@ Create a program that can :
     
 Game files are simple .txt files in which :  
 * The marker '#' followed by a number represent a Situation  
-* The marker '@' is followed by the current situations offered choices and their coreesponding actions  
+* The marker '@' is followed by the current situation offered choices and their corresponding actions  
 * After an '@' marker, you can define :  
   1. input > action : input is what the player is suppose to type in and action is what the program should do next  
   1. When multiple choices are available separate the input > action with a comma  
